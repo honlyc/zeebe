@@ -9,7 +9,10 @@ package io.zeebe.engine.processing.streamprocessor;
 
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.engine.processing.streamprocessor.writers.CommandResponseWriter;
+import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriter;
+import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriterImpl;
 import io.zeebe.logstreams.log.LogStream;
+import io.zeebe.logstreams.log.LogStreamBatchWriter;
 import io.zeebe.logstreams.log.LoggedEvent;
 import io.zeebe.protocol.Protocol;
 import io.zeebe.protocol.impl.record.RecordMetadata;
@@ -18,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public final class StreamProcessorBuilder {
 
@@ -27,10 +31,22 @@ public final class StreamProcessorBuilder {
   private ActorScheduler actorScheduler;
   private ZeebeDb zeebeDb;
   private int nodeId;
+  private Function<LogStreamBatchWriter, TypedStreamWriter> typedStreamWriterFactory =
+            TypedStreamWriterImpl::new;
 
   public StreamProcessorBuilder() {
     processingContext = new ProcessingContext();
   }
+
+    public Function<LogStreamBatchWriter, TypedStreamWriter> getTypedStreamWriterFactory() {
+        return typedStreamWriterFactory;
+    }
+
+    public StreamProcessorBuilder typedStreamWriterFactory(
+            final Function<LogStreamBatchWriter, TypedStreamWriter> typedStreamWriterFactory) {
+        this.typedStreamWriterFactory = typedStreamWriterFactory;
+        return this;
+    }
 
   public StreamProcessorBuilder streamProcessorFactory(
       final TypedRecordProcessorFactory typedRecordProcessorFactory) {

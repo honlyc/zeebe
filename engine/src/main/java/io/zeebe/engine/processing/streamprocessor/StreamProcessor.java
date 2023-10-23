@@ -10,7 +10,7 @@ package io.zeebe.engine.processing.streamprocessor;
 import io.zeebe.db.DbContext;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.engine.metrics.StreamProcessorMetrics;
-import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriterImpl;
+import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriter;
 import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.logstreams.impl.Loggers;
 import io.zeebe.logstreams.log.LogStream;
@@ -28,6 +28,8 @@ import io.zeebe.util.sched.future.CompletableActorFuture;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+
 import org.slf4j.Logger;
 
 public class StreamProcessor extends Actor implements HealthMonitorable {
@@ -52,7 +54,6 @@ public class StreamProcessor extends Actor implements HealthMonitorable {
   private final String actorName;
   private LogStreamReader logStreamReader;
   private ActorCondition onCommitPositionUpdatedCondition;
-  private long snapshotPosition = -1L;
   private ProcessingStateMachine processingStateMachine;
 
   private volatile Phase phase = Phase.REPROCESSING;
@@ -64,12 +65,14 @@ public class StreamProcessor extends Actor implements HealthMonitorable {
   private boolean shouldProcess = true;
   /** Recover future is completed after reprocessing is done. */
   private ActorFuture<Long> recoverFuture;
+  private final Function<LogStreamBatchWriter, TypedStreamWriter> typedStreamWriterFactory;
 
   protected StreamProcessor(final StreamProcessorBuilder processorBuilder) {
     actorScheduler = processorBuilder.getActorScheduler();
     lifecycleAwareListeners = processorBuilder.getLifecycleListeners();
 
     typedRecordProcessorFactory = processorBuilder.getTypedRecordProcessorFactory();
+    typedStreamWriterFactory = processorBuilder.getTypedStreamWriterFactory();
     zeebeDb = processorBuilder.getZeebeDb();
 
     processingContext =
@@ -103,7 +106,7 @@ public class StreamProcessor extends Actor implements HealthMonitorable {
     try {
       LOG.debug("Recovering state of partition {} from snapshot", partitionId);
       final long startTime = System.currentTimeMillis();
-      snapshotPosition = recoverFromSnapshot();
+      final long snapshotPosition = recoverFromSnapshot();
 
       initProcessors();
 
@@ -200,7 +203,7 @@ public class StreamProcessor extends Actor implements HealthMonitorable {
     if (errorOnReceivingWriter == null) {
       processingContext
           .maxFragmentSize(batchWriter.getMaxFragmentLength())
-          .logStreamWriter(new TypedStreamWriterImpl(batchWriter));
+          .logStreamWriter(typedStreamWriterFactory.apply(batchWriter));
 
       actor.runOnCompletionBlockingCurrentPhase(
           logStream.newLogStreamReader(), this::onRetrievingReader);
