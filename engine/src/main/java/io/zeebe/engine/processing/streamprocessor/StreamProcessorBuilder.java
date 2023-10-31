@@ -38,15 +38,15 @@ public final class StreamProcessorBuilder {
     processingContext = new ProcessingContext();
   }
 
-    public Function<LogStreamBatchWriter, TypedStreamWriter> getTypedStreamWriterFactory() {
-        return typedStreamWriterFactory;
-    }
+  public Function<LogStreamBatchWriter, TypedStreamWriter> getTypedStreamWriterFactory() {
+    return typedStreamWriterFactory;
+  }
 
-    public StreamProcessorBuilder typedStreamWriterFactory(
-            final Function<LogStreamBatchWriter, TypedStreamWriter> typedStreamWriterFactory) {
-        this.typedStreamWriterFactory = typedStreamWriterFactory;
-        return this;
-    }
+  public StreamProcessorBuilder typedStreamWriterFactory(
+          final Function<LogStreamBatchWriter, TypedStreamWriter> typedStreamWriterFactory) {
+    this.typedStreamWriterFactory = typedStreamWriterFactory;
+    return this;
+  }
 
   public StreamProcessorBuilder streamProcessorFactory(
       final TypedRecordProcessorFactory typedRecordProcessorFactory) {
