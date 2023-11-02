@@ -52,7 +52,7 @@ public interface ZeebeDb<ColumnFamilyType extends Enum<ColumnFamilyType>> extend
    */
   void createSnapshot(File snapshotDir);
 
-  Optional<String> getProperty(ColumnFamilyType columnFamilyName, String propertyName);
+  Optional<String> getProperty(String propertyName);
 
   DbContext createContext();
 

@@ -72,7 +72,8 @@ public final class DefaultDbContext implements DbContext {
   @Override
   public void wrapKeyView(final byte[] key) {
     if (key != null) {
-      keyViewBuffer.wrap(key);
+      // wrap without the column family key
+      keyViewBuffer.wrap(key, Long.BYTES, key.length - Long.BYTES);
     } else {
       keyViewBuffer.wrap(ZERO_SIZE_ARRAY);
     }
