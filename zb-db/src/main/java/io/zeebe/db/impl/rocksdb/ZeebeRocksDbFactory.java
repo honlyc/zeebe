@@ -90,6 +90,63 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
     return db;
   }
 
+  public ZeebeTransactionDb<ColumnFamilyType> createDbOld(final File pathName) {
+    return open(
+        pathName,
+        Arrays.stream(columnFamilyTypeClass.getEnumConstants())
+            .map(c -> c.name().toLowerCase().getBytes())
+            .collect(Collectors.toList()));
+  }
+
+  private ZeebeTransactionDb<ColumnFamilyType> open(
+      final File dbDirectory, final List<byte[]> columnFamilyNames) {
+
+    final ZeebeTransactionDb<ColumnFamilyType> db;
+    try {
+      final List<AutoCloseable> closeables = new ArrayList<>();
+
+      // column family options have to be closed as last
+      final ColumnFamilyOptions columnFamilyOptions = createColumnFamilyOptions(new ArrayList<>());
+      closeables.add(columnFamilyOptions);
+
+      final List<ColumnFamilyDescriptor> columnFamilyDescriptors =
+          createFamilyDescriptors(columnFamilyNames, columnFamilyOptions);
+      final DBOptions dbOptions =
+          new DBOptions()
+              .setCreateMissingColumnFamilies(true)
+              .setErrorIfExists(false)
+              .setCreateIfMissing(true)
+              .setParanoidChecks(true);
+      closeables.add(dbOptions);
+
+      db =
+          ZeebeTransactionDb.openTransactionalDb(
+              dbOptions,
+              dbDirectory.getAbsolutePath(),
+              columnFamilyDescriptors,
+              closeables,
+              columnFamilyTypeClass);
+
+    } catch (final RocksDBException e) {
+      throw new RuntimeException("Unexpected error occurred trying to open the database", e);
+    }
+    return db;
+  }
+
+  private List<ColumnFamilyDescriptor> createFamilyDescriptors(
+      final List<byte[]> columnFamilyNames, final ColumnFamilyOptions columnFamilyOptions) {
+    final List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
+
+    if (columnFamilyNames != null && !columnFamilyNames.isEmpty()) {
+      for (final byte[] name : columnFamilyNames) {
+        final ColumnFamilyDescriptor columnFamilyDescriptor =
+            new ColumnFamilyDescriptor(name, columnFamilyOptions);
+        columnFamilyDescriptors.add(columnFamilyDescriptor);
+      }
+    }
+    return columnFamilyDescriptors;
+  }
+
   private DBOptions createDefaultDbOptions(final List<AutoCloseable> closeables) {
     final var statistics = new Statistics();
     closeables.add(statistics);

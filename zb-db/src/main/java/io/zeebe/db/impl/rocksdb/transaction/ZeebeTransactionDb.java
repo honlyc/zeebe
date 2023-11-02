@@ -93,6 +93,33 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
     return new ZeebeTransactionDb<>(defaultColumnFamilyHandle, optimisticTransactionDB, closables);
   }
 
+  public static <ColumnFamilyNames extends Enum<ColumnFamilyNames>>
+  ZeebeTransactionDb<ColumnFamilyNames> openTransactionalDb(
+      final DBOptions options,
+      final String path,
+      final List<ColumnFamilyDescriptor> columnFamilyDescriptors,
+      final List<AutoCloseable> closables,
+      final Class<ColumnFamilyNames> columnFamilyTypeClass)
+      throws RocksDBException {
+    final EnumMap<ColumnFamilyNames, Long> columnFamilyMap = new EnumMap<>(columnFamilyTypeClass);
+
+    final List<ColumnFamilyHandle> handles = new ArrayList<>();
+    final OptimisticTransactionDB optimisticTransactionDB =
+        OptimisticTransactionDB.open(options, path, columnFamilyDescriptors, handles);
+    closables.add(optimisticTransactionDB);
+
+    final ColumnFamilyNames[] enumConstants = columnFamilyTypeClass.getEnumConstants();
+    final Long2ObjectHashMap<ColumnFamilyHandle> handleToEnumMap = new Long2ObjectHashMap<>();
+    for (int i = 0; i < handles.size(); i++) {
+      final ColumnFamilyHandle columnFamilyHandle = handles.get(i);
+      closables.add(columnFamilyHandle);
+      columnFamilyMap.put(enumConstants[i], getNativeHandle(columnFamilyHandle));
+      handleToEnumMap.put(getNativeHandle(handles.get(i)), handles.get(i));
+    }
+    final var defaultColumnFamilyHandle = optimisticTransactionDB.getDefaultColumnFamily();
+    return new ZeebeTransactionDb<>(defaultColumnFamilyHandle, optimisticTransactionDB, closables);
+  }
+
   private static long getNativeHandle(final RocksObject object) {
     try {
       return RocksDbInternal.nativeHandle.getLong(object);

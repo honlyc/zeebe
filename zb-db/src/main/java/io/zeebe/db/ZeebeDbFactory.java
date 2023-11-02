@@ -24,4 +24,5 @@ public interface ZeebeDbFactory<ColumnFamilyNames extends Enum<ColumnFamilyNames
    * @return the created zeebe database
    */
   ZeebeDb<ColumnFamilyNames> createDb(File pathName);
+  ZeebeDb<ColumnFamilyNames> createDbOld(File pathName);
 }
